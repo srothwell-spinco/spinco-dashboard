@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import date
+from orders_pipeline import load_orders, build_orders_summary
+from orders_sheet import write_orders_sheet
 
 # =============================
 # CONFIG
@@ -42,6 +44,13 @@ print(f"Report month: {current_month} ({len(df_curr)} classes)")
 # Exclude TEAM TEACH globally
 df = df[df["report_instructor"] != "TEAM TEACH"].copy()
 df_curr = df_curr[df_curr["report_instructor"] != "TEAM TEACH"].copy()
+
+# =============================
+# LOAD ORDERS
+# =============================
+print("Loading orders data...")
+orders_purchases, orders_renewals = load_orders()
+orders_summary = build_orders_summary(orders_purchases, orders_renewals)
 
 # =============================
 # DATE FORMATTING HELPERS
@@ -556,6 +565,9 @@ with pd.ExcelWriter(out_xlsx, engine="xlsxwriter", mode="w",
                  int_cols=["classes","riders"],
                  explanation="Weekly utilization trend across the full season.")
 
+    # Orders sheet
+    write_orders_sheet(writer, orders_purchases, orders_renewals, orders_summary, current_month)
+
     for tab in ["01_Executive_Summary","02_Weekday_Buckets","02_Weekend_Slots","02_Day_of_Week"]:
         writer.sheets[tab].set_tab_color(LIGHT_BLUE)
     for tab in ["03_Timeslot_Performance","03_Slot_Trajectory","03_Slot_Longitudinal"]:
@@ -564,5 +576,7 @@ with pd.ExcelWriter(out_xlsx, engine="xlsxwriter", mode="w",
         writer.sheets[tab].set_tab_color("#D9B3FF")
     for tab in ["05_Monthly_Trend","05_Weekly_Trend"]:
         writer.sheets[tab].set_tab_color(DARK_GREY)
+    if "Orders" in writer.sheets:
+        writer.sheets["Orders"].set_tab_color(LIGHT_BLUE)
 
 print(f"Monthly pack written: {out_xlsx}")
